@@ -39,7 +39,13 @@ async def main():
         return
 
     # --- Setup ---
-    telethon_client = TelegramClient('bot_session', API_ID, API_HASH)
+    telethon_client = TelegramClient(
+        'bot_session', 
+        API_ID, 
+        API_HASH,
+        connection_retries=5,
+        timeout=3600
+    )
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.bot_data['telethon_client'] = telethon_client
     context = MockContext(application)

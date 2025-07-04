@@ -253,8 +253,14 @@ if __name__ == "__main__":
     async def main():
         # ... (rest of the main async function remains the same)
         
-        # Initialize Telethon client and start it
-        telethon_client = TelegramClient('bot_session', API_ID, API_HASH)
+        # Initialize Telethon client with a long timeout and start it
+        telethon_client = TelegramClient(
+            'bot_session', 
+            API_ID, 
+            API_HASH,
+            connection_retries=5,
+            timeout=3600
+        )
         await telethon_client.start(bot_token=TELEGRAM_BOT_TOKEN)
         print("Telethon client started.")
 
