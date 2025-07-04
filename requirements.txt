@@ -5,3 +5,4 @@ telethon>=1.28.0
 python-dotenv
 ffmpeg
 telegram
+Flask>=2.0

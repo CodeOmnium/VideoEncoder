@@ -223,10 +223,35 @@ def main() -> None:
         print("Telethon client started.")
         application.run_polling()
 
+from flask import Flask
+from threading import Thread
+
+# ... (imports)
+
+# --- Keep-Alive Web Server ---
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Bot is alive!"
+
+def run_web_server():
+    # Render provides the PORT environment variable
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
+
+# ... (rest of the code)
+
 if __name__ == "__main__":
     
+    # Start the keep-alive web server in a separate thread
+    keep_alive_thread = Thread(target=run_web_server)
+    keep_alive_thread.daemon = True
+    keep_alive_thread.start()
+    print("Keep-alive server started.")
+
     async def main():
-        """Initializes and runs the bot."""
+        # ... (rest of the main async function remains the same)
         
         # Initialize Telethon client and start it
         telethon_client = TelegramClient('bot_session', API_ID, API_HASH)
@@ -251,7 +276,6 @@ if __name__ == "__main__":
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_other_messages))
         
         # Run the bot until the user presses Ctrl-C
-        # This runs the bot in the same event loop that Telethon is using
         print("Starting bot polling...")
         async with application:
             await application.initialize()
@@ -260,7 +284,7 @@ if __name__ == "__main__":
             
             # Keep the script running until it's stopped
             while True:
-                await asyncio.sleep(3600) # Sleep for a long time
+                await asyncio.sleep(3600)
 
     # Run the main async function
     asyncio.run(main())
