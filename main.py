@@ -259,11 +259,16 @@ if __name__ == "__main__":
         print("Telethon client started.")
 
         # Build the python-telegram-bot application
+        # Set high timeouts to prevent issues on slow networks or with large files
+        timeout_config = httpx.Timeout(3600.0, read=3600.0)
         application = (
             Application.builder()
             .token(TELEGRAM_BOT_TOKEN)
             .http_version("1.1")
             .get_updates_http_version("1.1")
+            .timeout(timeout_config)
+            .read_timeout(3600.0)
+            .get_updates_read_timeout(3600.0)
             .build()
         )
 
