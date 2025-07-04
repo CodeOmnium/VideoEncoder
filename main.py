@@ -96,11 +96,13 @@ async def compress_video(context: ContextTypes.DEFAULT_TYPE, chat_id: int, messa
         (
             ffmpeg
             .input(input_path)
-            .output(output_path, vf='scale=-2:360', vcodec='libx264', preset='fast', crf=30, acodec='aac', strict='experimental', pix_fmt='yuv420p')
-            .run(quiet=True, overwrite_output=True)
+            .output(output_path, vf='scale=-2:360', vcodec='libx264', preset='ultrafast', crf=30, acodec='aac', strict='experimental', pix_fmt='yuv420p')
+            .run(overwrite_output=True)
         )
     except ffmpeg.Error as e:
-        error_message = f"Error processing video: {e.stderr.decode() if e.stderr else 'Unknown FFmpeg error'}"
+        # Log the full error to the console for debugging
+        print(f"FFmpeg error:\n{e.stderr.decode()}")
+        error_message = f"Error processing video. The server might be out of resources for a file this large."
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=error_message)
         raise
 
