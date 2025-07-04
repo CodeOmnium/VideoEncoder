@@ -101,7 +101,8 @@ async def compress_video(context: ContextTypes.DEFAULT_TYPE, chat_id: int, messa
         )
     except ffmpeg.Error as e:
         # Log the full error to the console for debugging
-        print(f"FFmpeg error:\n{e.stderr.decode()}")
+        stderr = e.stderr.decode() if e.stderr else "No stderr output from FFmpeg."
+        print(f"FFmpeg error:\n{stderr}")
         error_message = f"Error processing video. The server might be out of resources for a file this large."
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=error_message)
         raise
@@ -135,6 +136,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Send me a video, and I'll compress it to 360p for you."
     )
 
+import re
+
+# ... (rest of the imports)
+
+def sanitize_filename(filename):
+    """Removes special characters from a filename to make it safe for shell commands."""
+    # Remove invalid characters
+    sanitized = re.sub(r'[\/*?:"<>|&]', "", filename)
+    # Replace spaces with underscores
+    sanitized = re.sub(r'\s+', '_', sanitized)
+    return sanitized
+
+# ... (rest of the code)
+
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """The main handler for receiving and processing videos."""
     chat_id = update.message.chat_id
@@ -148,9 +163,12 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Sorry, I couldn't retrieve the file from this message.")
         return
 
-    file_name = telethon_message.file.name
-    input_path = os.path.join(DOWNLOAD_PATH, file_name)
-    output_path = os.path.join(PROCESSED_PATH, f"processed_{file_name}")
+    # Sanitize the filename to prevent errors
+    original_filename = telethon_message.file.name
+    safe_filename = sanitize_filename(original_filename)
+    
+    input_path = os.path.join(DOWNLOAD_PATH, safe_filename)
+    output_path = os.path.join(PROCESSED_PATH, f"processed_{safe_filename}")
 
     try:
         os.makedirs(DOWNLOAD_PATH, exist_ok=True)
@@ -159,6 +177,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await download_video(context, chat_id, message_id, telethon_message, input_path)
         await compress_video(context, chat_id, message_id, input_path, output_path)
         await upload_video(context, chat_id, message_id, output_path)
+
 
     except Exception as e:
         print(f"An error occurred: {e}")
