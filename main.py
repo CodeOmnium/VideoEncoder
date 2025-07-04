@@ -224,14 +224,16 @@ def main() -> None:
         application.run_polling()
 
 if __name__ == "__main__":
-    # It's good practice to wrap the main call in an async function
-    # for better compatibility with Telethon's async nature.
-    async def start_bot():
-        telethon_client = TelegramClient('bot_session', API_ID, API_HASH)
+    
+    async def main():
+        """Initializes and runs the bot."""
         
-        # Explicitly start the client with the bot token for non-interactive login
+        # Initialize Telethon client and start it
+        telethon_client = TelegramClient('bot_session', API_ID, API_HASH)
         await telethon_client.start(bot_token=TELEGRAM_BOT_TOKEN)
+        print("Telethon client started.")
 
+        # Build the python-telegram-bot application
         application = (
             Application.builder()
             .token(TELEGRAM_BOT_TOKEN)
@@ -240,14 +242,25 @@ if __name__ == "__main__":
             .build()
         )
 
+        # Add the Telethon client to the bot's context data
         application.bot_data['telethon_client'] = telethon_client
 
+        # Add handlers
         application.add_handler(CommandHandler("start", start))
         application.add_handler(MessageHandler(filters.VIDEO, handle_video))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_other_messages))
         
+        # Run the bot until the user presses Ctrl-C
+        # This runs the bot in the same event loop that Telethon is using
         print("Starting bot polling...")
-        await application.run_polling()
+        async with application:
+            await application.initialize()
+            await application.start()
+            await application.updater.start_polling()
+            
+            # Keep the script running until it's stopped
+            while True:
+                await asyncio.sleep(3600) # Sleep for a long time
 
-    # Run the async start function
-    asyncio.run(start_bot())
+    # Run the main async function
+    asyncio.run(main())
