@@ -212,14 +212,42 @@ def main() -> None:
     # Pass telethon_client to context
     application.bot_data['telethon_client'] = telethon_client
 
-
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.VIDEO, handle_video))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_other_messages))
 
-    # Start Telethon client
+    # Start the bot
+    # The 'with' block will automatically log in the bot using the bot token
+    # This is crucial for non-interactive environments like Render
     with telethon_client:
+        print("Telethon client started.")
         application.run_polling()
 
 if __name__ == "__main__":
-    main()
+    # It's good practice to wrap the main call in an async function
+    # for better compatibility with Telethon's async nature.
+    async def start_bot():
+        telethon_client = TelegramClient('bot_session', API_ID, API_HASH)
+        
+        # Explicitly start the client with the bot token for non-interactive login
+        await telethon_client.start(bot_token=TELEGRAM_BOT_TOKEN)
+
+        application = (
+            Application.builder()
+            .token(TELEGRAM_BOT_TOKEN)
+            .http_version("1.1")
+            .get_updates_http_version("1.1")
+            .build()
+        )
+
+        application.bot_data['telethon_client'] = telethon_client
+
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_other_messages))
+        
+        print("Starting bot polling...")
+        await application.run_polling()
+
+    # Run the async start function
+    asyncio.run(start_bot())
