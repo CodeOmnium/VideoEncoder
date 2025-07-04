@@ -1,0 +1,9 @@
+modules = ["python-3.12", "nix"]
+run = "python main.py"
+
+[nix]
+channel = "stable-24_05"
+packages = ["ffmpeg-full", "openssl"]
+
+[deployment]
+run = ["sh", "-c", "python main.py"]
