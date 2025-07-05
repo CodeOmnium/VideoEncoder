@@ -44,9 +44,20 @@ def format_bytes(size):
         n += 1
     return f"{size:.2f} {power_labels[n]}B"
 
-async def send_progress_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, start_time: float, current_size: int, total_size: int, action: str):
-    """Sends or edits a progress message."""
-    elapsed_time = time.time() - start_time
+async def send_progress_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, start_time: float, current_size: int, total_size: int, action: str, force: bool = False):
+    """Sends or edits a progress message, but only if enough time has passed or if forced."""
+    now = time.time()
+    # Get the last update time from context, default to 0 if not set
+    last_update = context.bot_data.get((chat_id, message_id, 'last_update'), 0)
+
+    # Only send an update if the interval has passed or if it's a forced update (e.g., for completion messages)
+    if not force and (now - last_update) < PROGRESS_UPDATE_INTERVAL:
+        return
+
+    # Update the last update time
+    context.bot_data[(chat_id, message_id, 'last_update')] = now
+    
+    elapsed_time = now - start_time
     speed = current_size / elapsed_time if elapsed_time > 0 else 0
     progress = (current_size / total_size) * 100 if total_size > 0 else 0
     
@@ -64,29 +75,24 @@ async def send_progress_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int
     except Exception:
         pass # Ignore if message not found or not modified
 
-async def update_progress_periodically(context, chat_id, message_id, start_time, get_current_size, total_size, action):
-    """Periodically updates the progress message."""
-    while True:
-        current_size = get_current_size()
-        await send_progress_message(context, chat_id, message_id, start_time, current_size, total_size, action)
-        await asyncio.sleep(PROGRESS_UPDATE_INTERVAL)
-
 # --- Core Logic ---
 
 async def download_video(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, telethon_message, file_path: str):
-    """Downloads a video using Telethon with progress updates."""
+    """Downloads a video using Telethon with throttled progress updates."""
     await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Starting download...")
     start_time = time.time()
     
     telethon_client = context.bot_data['telethon_client']
     total_size = telethon_message.file.size
 
+    # The progress_callback for Telethon
     async def progress_callback(current_bytes, total_bytes):
         await send_progress_message(context, chat_id, message_id, start_time, current_bytes, total_bytes, "Downloading")
 
     await telethon_client.download_media(telethon_message.media, file=file_path, progress_callback=progress_callback)
     
-    await send_progress_message(context, chat_id, message_id, start_time, total_size, total_size, "Download Complete")
+    # Ensure the final "Download Complete" message is sent
+    await send_progress_message(context, chat_id, message_id, start_time, total_size, total_size, "Download Complete", force=True)
 
 async def compress_video(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, input_path: str, output_path: str):
     """Compresses a video using FFmpeg."""
@@ -110,7 +116,7 @@ async def compress_video(context: ContextTypes.DEFAULT_TYPE, chat_id: int, messa
     await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Processing complete.")
 
 async def upload_video(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, file_path: str):
-    """Uploads a video to the chat using Telethon."""
+    """Uploads a video to the chat using Telethon with throttled progress updates."""
     await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Starting upload...")
 
     telethon_client = context.bot_data['telethon_client']
@@ -119,12 +125,14 @@ async def upload_video(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message
     file_size = os.path.getsize(file_path)
     start_time = time.time()
 
+    # The progress_callback for Telethon
     async def progress_callback(current_bytes, total_bytes):
         await send_progress_message(context, chat_id, message_id, start_time, current_bytes, total_bytes, "Uploading")
 
     await telethon_client.send_file(chat_id, file_path, progress_callback=progress_callback, attributes=[DocumentAttributeVideo(duration=0, w=0, h=0, supports_streaming=True)])
         
-    await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Upload Complete!")
+    # Ensure the final "Upload Complete" message is sent
+    await send_progress_message(context, chat_id, message_id, start_time, file_size, file_size, "Upload Complete!", force=True)
 
 
 # --- Command & Message Handlers ---
