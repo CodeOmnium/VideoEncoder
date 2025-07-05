@@ -8,7 +8,6 @@ from telethon import TelegramClient
 from main import (
     compress_video,
     upload_video,
-    sanitize_filename,  # <-- Import the sanitizer
     TELEGRAM_BOT_TOKEN,
     API_ID,
     API_HASH,
@@ -20,11 +19,10 @@ from main import (
 
 # 1. The ID of the chat where the bot should send the file and messages.
 #    To get this, you can use a bot like @userinfobot.
-CHAT_ID = 0  # <--- ❗️❗️❗️ REPLACE 0 WITH YOUR CHAT ID ❗️❗️❗️
+CHAT_ID = 7858468560  # <--- ❗️❗️❗️ REPLACE 0 WITH YOUR CHAT ID ❗️❗️❗️
 
 # 2. The exact, full name of the video file that is in the 'downloads' folder.
-#    This should be the ORIGINAL filename, before sanitization.
-FILE_NAME = ""  # <--- ❗️❗️❗️ REPLACE "" WITH THE FILENAME (e.g., "my_large_video.mp4") ❗️❗️❗️
+FILE_NAME = "Polymers & POC | L-02 NJ_247.mp4"  # <--- ❗️❗️❗️ REPLACE "" WITH THE FILENAME (e.g., "my_large_video.mp4") ❗️❗️❗️
 
 # --------------------------------------------------------------------
 
@@ -41,38 +39,28 @@ async def main():
         return
 
     # --- Setup ---
-    # Apply the same robust timeout settings as the main bot
     telethon_client = TelegramClient(
         'bot_session', 
         API_ID, 
         API_HASH,
         connection_retries=5,
-        timeout=86400  # 24 hours
+        timeout=3600
     )
-    application = (
-        Application.builder()
-        .token(TELEGRAM_BOT_TOKEN)
-        .connect_timeout(86400.0)
-        .read_timeout(86400.0)
-        .build()
-    )
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.bot_data['telethon_client'] = telethon_client
     context = MockContext(application)
 
-    # Sanitize the filename to match the name on disk
-    # This ensures the recovery script finds the file saved by the main bot
-    safe_filename = sanitize_filename(FILE_NAME)
-    input_path = os.path.join(DOWNLOAD_PATH, safe_filename)
-    output_path = os.path.join(PROCESSED_PATH, f"processed_{safe_filename}")
+    input_path = os.path.join(DOWNLOAD_PATH, FILE_NAME)
+    output_path = os.path.join(PROCESSED_PATH, f"processed_{FILE_NAME}")
     status_message = None
 
     # --- Run Recovery ---
     async with telethon_client:
-        print(f"🚀 Starting recovery process for: {safe_filename}")
+        print("🚀 Starting recovery process...")
         if not os.path.exists(input_path):
-            print(f"❌ Error: File not found at {input_path}. Make sure the original FILE_NAME in the script is correct.")
+            print(f"❌ Error: File not found at {input_path}. Make sure FILE_NAME is correct.")
             return
-        
+
         try:
             # Send a new message to use for status updates
             status_message = await context.bot.send_message(

@@ -141,19 +141,12 @@ import re
 # ... (rest of the imports)
 
 def sanitize_filename(filename):
-    """
-    Sanitizes a filename by removing special characters and replacing spaces,
-    while correctly preserving the file extension.
-    """
-    # Split the filename into its name and extension
-    name, ext = os.path.splitext(filename)
-    
-    # Sanitize the name part
-    sanitized_name = re.sub(r'[\\/*?:"<>|&]', "", name)
-    sanitized_name = re.sub(r'\s+', '_', sanitized_name)
-    
-    # Return the sanitized name joined with its original extension
-    return f"{sanitized_name}{ext}"
+    """Removes special characters from a filename to make it safe for shell commands."""
+    # Remove invalid characters
+    sanitized = re.sub(r'[\/*?:"<>|&]', "", filename)
+    # Replace spaces with underscores
+    sanitized = re.sub(r'\s+', '_', sanitized)
+    return sanitized
 
 # ... (rest of the code)
 
@@ -260,30 +253,30 @@ if __name__ == "__main__":
     async def main():
         # ... (rest of the main async function remains the same)
         
-        # Initialize Telethon client with a very long timeout and start it
+        # Initialize Telethon client with a long timeout and start it
         telethon_client = TelegramClient(
             'bot_session', 
             API_ID, 
             API_HASH,
             connection_retries=5,
-            timeout=86400  # 24 hours
+            timeout=3600
         )
         await telethon_client.start(bot_token=TELEGRAM_BOT_TOKEN)
         print("Telethon client started.")
 
         # Build the python-telegram-bot application
-        # Set extremely high timeouts to prevent issues on slow networks or with large files
+        # Set high timeouts to prevent issues on slow networks or with large files
         application = (
             Application.builder()
             .token(TELEGRAM_BOT_TOKEN)
             .http_version("1.1")
             .get_updates_http_version("1.1")
-            .connect_timeout(86400.0)
-            .read_timeout(86400.0)
-            .write_timeout(86400.0)
-            .pool_timeout(86400.0)
-            .get_updates_read_timeout(86400.0)
-            .get_updates_connect_timeout(86400.0)
+            .connect_timeout(3600.0)
+            .read_timeout(3600.0)
+            .write_timeout(3600.0)
+            .pool_timeout(3600.0)
+            .get_updates_read_timeout(3600.0)
+            .get_updates_connect_timeout(3600.0)
             .build()
         )
 
@@ -293,7 +286,6 @@ if __name__ == "__main__":
         # Add handlers
         application.add_handler(CommandHandler("start", start))
         application.add_handler(MessageHandler(filters.VIDEO, handle_video))
-        # Add a handler for text messages that are not commands
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_other_messages))
         
         # Run the bot until the user presses Ctrl-C
